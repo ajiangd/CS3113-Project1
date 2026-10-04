@@ -17,12 +17,17 @@ constexpr int SCREEN_WIDTH  = 900,
               FPS           = 60;
 
 constexpr Vector2 ORIGIN = {SCREEN_WIDTH/2, SCREEN_HEIGHT/2};
-constexpr char BG_COLOUR[] = "#09021F";
 
 // Global Variables
 AppStatus gAppStatus = RUNNING;
 float gPulseTime = 0.0f;
 float gPreviousTicks = 0.0f;
+Color gBgColour = {9, 2, 31, 255};
+float gBgTime   = 0.0f;
+
+// Orbit ring variables
+constexpr char DOT_FP[] = "assets/dot.png";
+Texture2D gDotTexture;
 
 // Sun variables
 constexpr char SUN_FP[] = "assets/sun.png";
@@ -54,19 +59,20 @@ Vector2   gMoonScale    = {MOON_SIZE, MOON_SIZE};
 float     gMoonOrbitAngle = 0.0f;
 float     gMoonRotate     = 0.0f;
 
-
 // Function Declarations
 void initialise();
 void processInput();
 void update();
 void render();
 void shutdown();
+void drawDot(float x, float y);
 
 // Function Definitions
 void initialise()
 {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Solar System");
 
+    gDotTexture = LoadTexture(DOT_FP);
     gSunTexture = LoadTexture(SUN_FP);
     gEarthTexture = LoadTexture(EARTH_FP);
     gMoonTexture = LoadTexture(MOON_FP);
@@ -83,16 +89,22 @@ void update() {
     float ticks = GetTime();
     float deltaTime = ticks - gPreviousTicks;
     gPreviousTicks = ticks;
-    
     gPulseTime += 3.0f * deltaTime;
 
-    // Sun Movement
-    float size   = SUN_SIZE + 5.0f * cos(gPulseTime);
-    float aspect = static_cast<float>(gSunTexture.height) / gSunTexture.width;
-    float radius = 60.0f + 15.0f * sin(5 * gSunOrbitAngle * 3.14f / 180);
+    // Extra credit
+    gBgTime += 2.0f * deltaTime;
+    float fade = (sin(gBgTime) + 1.0f) / 2.0f;
 
+    gBgColour.r = static_cast<unsigned char>( 9 + fade * (45 -  9));
+    gBgColour.g = static_cast<unsigned char>( 2 + fade * (10 -  2));
+    gBgColour.b = static_cast<unsigned char>(31 + fade * (70 - 31));
+
+    // Sun Movement
+    float size   = SUN_SIZE + 10.0f * cos(gPulseTime);
+    float aspect = static_cast<float>(gSunTexture.height) / gSunTexture.width;
     gSunScale = {size, size * aspect};
     gSunOrbitAngle += 30.0f * deltaTime;
+    float radius = 60.0f + 15.0f * sin(5 * gSunOrbitAngle * 3.14f / 180);
     gSunPosition.x = ORIGIN.x + radius * cos(gSunOrbitAngle * 3.14f / 180);
     gSunPosition.y = ORIGIN.y + radius * sin(gSunOrbitAngle * 3.14f / 180);
     gSunRotate += 15.0f * deltaTime;
@@ -114,20 +126,46 @@ void update() {
     gMoonRotate += -30.0f * deltaTime;
 }
 
+void drawDot(float x, float y)
+{
+    Rectangle source = {0.0f, 0.0f,
+                        static_cast<float>(gDotTexture.width),
+                        static_cast<float>(gDotTexture.height)};
+    Rectangle dest   = {x, y, 3.0f, 3.0f};
+    Vector2   origin = {1.5f, 1.5f};
+
+    Color faintWhite = {255, 255, 255, 90};
+    DrawTexturePro(gDotTexture, source, dest, origin, 0.0f, faintWhite);
+}
+
+
 void render()
 {
     BeginDrawing();
 
-    ClearBackground(ColorFromHex(BG_COLOUR));
+    ClearBackground(gBgColour);
+
+    // Orbit rings
+    for (int i = 0; i < 360; i += 2)
+    {
+        float a = i * 3.14f / 180;
+
+        // Dots around the Sun's sinusoidal path
+        float r = 60.0f + 15.0f * sin(5 * a);
+        drawDot(ORIGIN.x + r * cos(a), ORIGIN.y + r * sin(a));
+
+        // Dots around the Earth's elliptical orbit around the Sun
+        drawDot(gSunPosition.x + 200.0f * cos(a), gSunPosition.y + 100.0f * sin(a));
+
+        // Dots around the moon's orbit around the Earth
+        drawDot(gEarthPosition.x + 45.0f * cos(a), gEarthPosition.y + 45.0f * sin(a));
+    }
 
     // Render Sun
-
-    // Whole texture (UV coordinates)
     Rectangle sunTextureArea = {
         // top left corner
         0.0f, 0.0f,
 
-        // how large of a rectangle, starting from (0,0), do we want to "slice"?
         static_cast<float>(gSunTexture.width),
         static_cast<float>(gSunTexture.height)
     };
@@ -143,17 +181,14 @@ void render()
 
 
     // Render Earth
-
     Rectangle earthTextureArea = {
         // top left corner
         0.0f, 0.0f,
 
-        // how large of a rectangle, starting from (0,0), do we want to "slice"?
         static_cast<float>(gEarthTexture.width),
         static_cast<float>(gEarthTexture.height)
     };
     
-
     Rectangle earthDestinationArea = {
         gEarthPosition.x, gEarthPosition.y,
         gEarthScale.x, gEarthScale.y
@@ -162,7 +197,6 @@ void render()
     Vector2 earthOriginOffset = {gEarthScale.x / 2, gEarthScale.y / 2};
 
     DrawTexturePro(gEarthTexture, earthTextureArea, earthDestinationArea, earthOriginOffset, gEarthRotate, WHITE);
-
 
     // Render Moon
     Rectangle moonTextureArea = {
@@ -188,6 +222,7 @@ void shutdown()
     UnloadTexture(gSunTexture);
     UnloadTexture(gEarthTexture);
     UnloadTexture(gMoonTexture);
+    UnloadTexture(gDotTexture);
 
     CloseWindow();
 }
