@@ -1,7 +1,7 @@
 /**
 * Author: Ashley Jiang
 * Assignment: Simple 2D Scene
-* Date due: 10/5/2026
+* Date due: 10/05/2026
 * I pledge that I have completed this assignment without
 * collaborating with anyone else, in conformance with the
 * NYU School of Engineering Policies and Procedures on
@@ -23,12 +23,15 @@ constexpr Vector2 BASE_SIZE = {100.0F, 100.0F};
 constexpr char BG_COLOUR[] = "#09021F";
 constexpr char SUN_FP[] = "assets/sun.png";
 
+float gSunOrbitAngle = 0.0f;
+float gSunRotate       = 0.0f;
+
 
 // Global Variables
 AppStatus gAppStatus = RUNNING;
 Texture2D gSunTexture;
 Vector2 gSunPosition = ORIGIN;
-Vector2 gScale = BASE_SIZE;
+Vector2 gSunScale = BASE_SIZE;
 float gPulseTime = 0.0f;
 float gPreviousTicks = 0.0f;
 
@@ -42,7 +45,7 @@ void shutdown();
 // Function Definitions
 void initialise()
 {
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Textures & Delta Time");
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Solar System");
 
     gSunTexture = LoadTexture(SUN_FP);
 
@@ -59,12 +62,21 @@ void update() {
     float deltaTime = ticks - gPreviousTicks;
     gPreviousTicks = ticks;
     
-    gPulseTime += 1.0f * deltaTime;
+    gPulseTime += 3.0f * deltaTime;
 
-    gScale = {
-        BASE_SIZE.x + 20.0f * cos(gPulseTime),
-        BASE_SIZE.y + 20.0f * cos(gPulseTime)
-    };
+
+    float size   = BASE_SIZE.x + 5.0f * cos(gPulseTime);
+    float aspect = static_cast<float>(gSunTexture.height) / gSunTexture.width;
+
+    gSunScale = {size, size * aspect};
+
+    gSunOrbitAngle += 30.0f * deltaTime;
+    float radius = 60.0f + 15.0f * sin(5 * gSunOrbitAngle * 3.14f / 180);
+
+    gSunPosition.x = ORIGIN.x + radius * cos(gSunOrbitAngle * 3.14f / 180);
+    gSunPosition.y = ORIGIN.y + radius * sin(gSunOrbitAngle * 3.14f / 180);
+
+    gSunRotate += 15.0f * deltaTime;
 }
 
 void render()
@@ -87,12 +99,12 @@ void render()
         // where we want our rectangle to start being drawn
         gSunPosition.x, gSunPosition.y,
 
-        gScale.x, gScale.y
+        gSunScale.x, gSunScale.y
     };
 
-    Vector2 originOffset = {gScale.x / 2, gScale.y / 2};
+    Vector2 originOffset = {gSunScale.x / 2, gSunScale.y / 2};
 
-    DrawTexturePro(gSunTexture, textureArea, destinationArea, originOffset, 0.0f, WHITE);
+    DrawTexturePro(gSunTexture, textureArea, destinationArea, originOffset, gSunRotate, WHITE);
 
     EndDrawing();
 }
